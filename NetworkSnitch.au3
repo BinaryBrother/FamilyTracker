@@ -1,34 +1,22 @@
 #include <MsgBoxConstants.au3>
 #include <Array.au3>
 
-Global $sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
-Global $sPrimaryIP = _GetIPAuto()
-Global $aIP = StringSplit($sPrimaryIP, ".")
-Global $aARP_Table = _GetARPTable(true)
+#Region Global Declarations
+Global $sDatabase_Path, $sPrimaryIP, $aIP, $aARP_Table
 Global $aLocal_ARP_Table[1][2] = [["IP", "MAC"]]
+#EndRegion
 
-_CreateLocalARPTableDatabase()	; The program will work from this database.
-								; We will update it intermittently.
-								; We're more concerned with the existence of specific MAC addresses.
+$sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
+$sPrimaryIP = _GetIPAuto()
+$aIP = StringSplit($sPrimaryIP, ".")
+$aARP_Table = _GetARPTable()
 
-Func _CreateLocalARPTableDatabase()
-	For $N = 1 To $aARP_Table[0]
-		If _ContainsNetworkIP($aARP_Table[$N]) Then
-			$Test = StringRegExp($aARP_Table[$N], "(\d+\.\d+\.\d+\.\d+)\s+(..-..-..-..-..-..)", 3)
-			If IsArray($Test) Then
-				_ArrayAdd($aLocal_ARP_Table, $Test[0] & "|" & $Test[1])
-				IniWrite($sDatabase_Path, "Entry", $Test[0], $Test[1])
-			EndIf
-		EndIf
-	Next
-EndFunc
+_CreateLocalARPTableDatabase()
 
-; At this point $aLocal_ARP_Table is filled with the local ARP Table.
-								; You can use this to check if a device is on the network by checking the MAC Address.
-								; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor.
-								; [Monitor]
-								; be-b8-d0-71-15-fa=Jimmy's Pixel 6
-								; e2-c5-d3-fb-0a-fd=Nola's Watch
+#Region Update Globals
+AdlibRegister("_GetARPTable", 1000*60*5) ; (Default: 5 minutes) This will determine how often we look for NEW devices.
+AdlibRegister("_CreateLocalARPTableDatabase", 1000*60*5)
+#EndRegion
 
 ; At this point $aLocal_ARP_Table is filled with the local ARP Table.
 ; You can use this to check if a device is on the network by checking the MAC Address.
@@ -52,7 +40,17 @@ While 1
 		Sleep(500)
 	Next
 WEnd
-
+Func _CreateLocalARPTableDatabase()
+	For $N = 1 To $aARP_Table[0]
+		If _ContainsNetworkIP($aARP_Table[$N]) Then
+			$Test = StringRegExp($aARP_Table[$N], "(\d+\.\d+\.\d+\.\d+)\s+(..-..-..-..-..-..)", 3)
+			If IsArray($Test) Then
+				_ArrayAdd($aLocal_ARP_Table, $Test[0] & "|" & $Test[1])
+				IniWrite($sDatabase_Path, "Entry", $Test[0], $Test[1])
+			EndIf
+		EndIf
+	Next
+EndFunc
 
 Func _GetReturn($sCommand)
 	Local $lReturn = Run(@ComSpec & " /c " & $sCommand, "", @SW_HIDE, $STDERR_CHILD + $STDOUT_CHILD)
@@ -82,18 +80,16 @@ EndFunc   ;==>_GetActiveIP
 Func _GetIPAuto()
 	Local $lReturn = _GetReturn("tracert -d -h 1 -4 8.8.8.8")
 	Local $aIPs = StringRegExp($lReturn, "(\d+\.\d+\.\d+\.\d+)", 3)
+	_ArrayDisplay($aIPs)
 	Return $aIPs[1]
 EndFunc
 
-Func _Fill_ARP_Table($pIP = "")
-	If $pIP = "" Then
-		$pIP = StringSplit("192.168.254.88", ".")
-	EndIf
+Func _Fill_ARP_Table()
 	Local $lIP
 	Local $lProgress
 	SplashTextOn("Network Snitch", "Scanning Network...", 300, 100, -1, -1, 1, "", 14)
 	For $N = 1 To 255
-		$lIP = $pIP[1] & "." & $pIP[2] & "." & $pIP[3] & "." & $N
+		$lIP = $aIP[1] & "." & $aIP[2] & "." & $aIP[3] & "." & $N
 		ConsoleWrite("Pinging: " & $lIP & @CRLF)
 		Run(@ComSpec & " /c ping -n 5 -w 2000 " & $lIP, "", @SW_HIDE)
 		$lProgress = Round(($N / 255) * 100, 2)
@@ -103,8 +99,8 @@ Func _Fill_ARP_Table($pIP = "")
 	SplashOff()
 EndFunc   ;==>_Fill_ARP_Table
 
-Func _GetARPTable($pFillArp = False)
-	If $pFillArp Then _Fill_ARP_Table()
+Func _GetARPTable()
+	_Fill_ARP_Table()
 	Local $lReturn = _GetReturn("arp -a")
 	$lReturn = StringSplit($lReturn, @CRLF, 1)
 	Return $lReturn
