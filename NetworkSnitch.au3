@@ -22,8 +22,8 @@ AdlibRegister("_CreateLocalARPTableDatabase", 1000*60*5)
 ; You can use this to check if a device is on the network by checking the MAC Address.
 ; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor.
 ; [Monitor]
-; be-b8-d0-71-15-fa=Jimmy's Pixel 6
-; e2-c5-d3-fb-0a-fd=Nola's Watch
+; be-b8-d0-71-15-fa=Jimmy's - Pixel 6
+; e2-c5-d3-fb-0a-fd=Nola's - Pixel 6
 
 $aData = IniReadSection($sDatabase_Path, "Monitor")
 ;_ArrayDisplay($aData)
