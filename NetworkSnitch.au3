@@ -53,8 +53,8 @@ Func _GetReturn($sCommand)
 	Local $lOutput = ""
 	While 1
 		$lOutput &= StdoutRead($lReturn)
-		$lOutput &= StderrRead("ERROR:" & $lReturn)
 		If @error Then ExitLoop
+		$lOutput &= StderrRead("ERROR:" & $lReturn)
 	WEnd
 	Return $lOutput
 EndFunc   ;==>_GetReturn
