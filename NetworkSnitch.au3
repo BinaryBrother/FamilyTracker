@@ -23,7 +23,12 @@ Func _CreateLocalARPTableDatabase()
 	Next
 EndFunc
 
-
+; At this point $aLocal_ARP_Table is filled with the local ARP Table.
+								; You can use this to check if a device is on the network by checking the MAC Address.
+								; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor.
+								; [Monitor]
+								; be-b8-d0-71-15-fa=Jimmy's Pixel 6
+								; e2-c5-d3-fb-0a-fd=Nola's Watch
 
 ; At this point $aLocal_ARP_Table is filled with the local ARP Table.
 ; You can use this to check if a device is on the network by checking the MAC Address.
@@ -38,12 +43,13 @@ While 1
 	For $N = 1 To $aData[0][0]
 		;$aData[$N][0] = MAC Address
 		$lReturn = _PingMAC($aData[$N][0])
-		If @error Then 
-			ConsoleWrite("WARNING: An IP was not found for " & $aData[$N][0] & @CRLF)
-			ContinueLoop
+		If @error or $lReturn = False Then 
+			ConsoleWrite("WARNING: Unable to communicate with " & $aData[$N][0] & @CRLF)
+			MsgBox($MB_OK, "Network Snitch", $aData[$N][1] & " left the network!")
+		Else
+			ConsoleWrite("Ping: " & $aData[$N][0] & " = " & $lReturn & @CRLF)
 		endif
-
-		MsgBox($MB_OK, "Network Snitch", $aData[$N][1] & " left the network!")
+		Sleep(500)
 	Next
 WEnd
 
@@ -105,8 +111,8 @@ Func _GetARPTable($pFillArp = False)
 EndFunc   ;==>_GetARPTable
 
 Func _Ping($pIP)
-	$lReturn = RunWait("ping.exe -n 1 " & $pIP, "", @SW_SHOW)
-	If $lReturn == 0 Then
+	$lReturn = Ping($pIP)
+	If Not @error And $lReturn >=1 Then
 		Return True
 	Else
 		Return SetError(1, 0, False)
@@ -120,11 +126,11 @@ Func _ContainsNetworkIP($pIP)
 EndFunc   ;==>_ContainsNetworkIP
 
 Func _PingMAC($sMAC)
-	ConsoleWrite("_PingMAC: " & $sMAC & @CRLF)
+	ConsoleWrite("_PingMAC(): " & $sMAC & @CRLF)
 	Local $aMonitor = IniReadSection($sDatabase_Path, "Entry")
 	For $N = 1 To $aMonitor[0][0]
 		If StringInStr($aMonitor[$N][1], $sMAC) Then
-			ConsoleWrite("Found: " & $aMonitor[$N][0] & @CRLF)
+			ConsoleWrite("_PingMAC(): IP = " & $aMonitor[$N][0] & @CRLF)
 			Return _Ping($aMonitor[$N][0])
 		EndIf
 	Next
