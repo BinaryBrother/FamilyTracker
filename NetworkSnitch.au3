@@ -1,19 +1,18 @@
 #include <MsgBoxConstants.au3>
 #include <Array.au3>
 
-#Region Global Declarations
-Global $sDatabase_Path, $sPrimaryIP, $aIP, $aARP_Table
-Global $aLocal_ARP_Table[1][2] = [["IP", "MAC"]]
-#EndRegion Global Declarations
+Global $sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
+Global $sIP = _GetGatewayIP()
+Global $aIP = StringSplit($sIP, ".")
+Global $aARP_Table = _Get_ARP_Table()
+Global $bFill_ARP_Table_FirstRun = True
+Global $bGet_ARP_Table_FirstRun = True
 
-$sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
-$sPrimaryIP = _GetIPAuto()
-$aIP = StringSplit($sPrimaryIP, ".")
+$aARP_Table = _Get_ARP_Table()
 
-$aARP_Table = _GetARPTable()
+_ArrayDisplay($aARP_Table)
 
-AdlibRegister("_GetARPTable", 1000 * 60) ; (Default: 1 minutes) This will determine how often we look for NEW devices.
-AdlibRegister("_Fill_ARP_Table", 1000 * 60 * 5) ; (Default: 1 hour) This will determine how often we scan the network for devices.
+AdlibRegister("_Fill_ARP_Table", 1000 * 60 * 5) ; (Default: 5 minutes) This will determine how often we scan the network for NEW devices.
 ; At this point $aARP_Table is filled with the local ARP Table.
 ; You can use this to check if a device is on the network by checking the MAC Address.
 ; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor. [LIMIT 3]
@@ -26,7 +25,7 @@ $aData = IniReadSection($sDatabase_Path, "Monitor")
 While 1
 	For $N = 1 To $aData[0][0]
 		;$aData[$N][0] = MAC Address
-		;$aData[$N][1] = Device Name
+		;$aData[$N][1] = User
 		$lReturn = _PingMAC($aData[$N][0])
 		If @error Or $lReturn = False Then
 			ConsoleWrite("WARNING: Unable to communicate with " & $aData[$N][1] & @CRLF)
@@ -38,19 +37,6 @@ While 1
 		Sleep(500)
 	Next
 WEnd
-#cs
-Func _CreateLocalARPTableDatabase()
-	For $N = 1 To $aARP_Table[0]
-		If _ContainsNetworkIP($aARP_Table[$N]) Then
-			$Test = StringRegExp($aARP_Table[$N], "(\d+\.\d+\.\d+\.\d+)\s+(..-..-..-..-..-..)", 3)
-			If IsArray($Test) Then
-				_ArrayAdd($aLocal_ARP_Table, $Test[0] & "|" & $Test[1])
-				IniWrite($sDatabase_Path, "Entry", $Test[0], $Test[1])
-			EndIf
-		EndIf
-	Next
-EndFunc   ;==>_CreateLocalARPTableDatabase
-#ce
 
 Func _GetReturn($sCommand)
 	Local $lReturn = Run(@ComSpec & " /c " & $sCommand, "", @SW_HIDE, $STDERR_CHILD + $STDOUT_CHILD)
@@ -77,32 +63,37 @@ Func _GetActiveIP()
 	Next
 EndFunc   ;==>_GetActiveIP
 
-Func _GetIPAuto()
+Func _GetGatewayIP()
 	Local $lReturn = _GetReturn("tracert -d -h 1 -4 8.8.8.8")
 	Local $aIPs = StringRegExp($lReturn, "(\d+\.\d+\.\d+\.\d+)", 3)
 	Return $aIPs[1]
-EndFunc   ;==>_GetIPAuto
+EndFunc   ;==>_GetGatewayIP
 
 Func _Fill_ARP_Table()
+	; This function will scan the network for devices and add them to the ARP Table
 	Local $lIP
 	Local $lProgress
-	SplashTextOn("Network Snitch", "Scanning Network...", 300, 100, -1, -1, 1, "", 14)
+	If $bFill_ARP_Table_FirstRun Then SplashTextOn("Network Snitch", "Scanning Network...", 300, 100, -1, -1, 1, "", 14)
 	For $N = 1 To 255
 		$lIP = $aIP[1] & "." & $aIP[2] & "." & $aIP[3] & "." & $N
 		ConsoleWrite("Pinging: " & $lIP & @CRLF)
 		Run(@ComSpec & " /c ping -n 5 -w 2000 " & $lIP, "", @SW_HIDE)
-		$lProgress = Round(($N / 255) * 100, 2)
-		ControlSetText("Network Snitch", "", "Static1", "Scanning Network..." & @CRLF & "Progress: " & $lProgress & "%")
-		Sleep(10)
+		If $bFill_ARP_Table_FirstRun Then $lProgress = Round(($N / 255) * 100, 2)
+		If $bFill_ARP_Table_FirstRun Then ControlSetText("Network Snitch", "", "Static1", "Scanning Network..." & @CRLF & "Progress: " & $lProgress & "%")
+		Sleep(50)
 	Next
-	SplashOff()
+	If $bFill_ARP_Table_FirstRun Then SplashOff()
+	$bFill_ARP_Table_FirstRun = False
 EndFunc   ;==>_Fill_ARP_Table
 
-Func _GetARPTable()
+Func _Get_ARP_Table()
+	If $bGet_ARP_Table_FirstRun Then _Fill_ARP_Table()
+
 	Local $lReturn = _GetReturn("arp -a")
 	$lReturn = StringSplit($lReturn, @CRLF, 1)
+	$bGet_ARP_Table_FirstRun = False
 	Return $lReturn
-EndFunc   ;==>_GetGlobalARPTable
+EndFunc   ;==>_GetARPTable
 
 Func _PingIP($pIP)
 	Local $iFailCount = 0
@@ -114,19 +105,14 @@ Func _PingIP($pIP)
 		Else
 			$iFailCount += 1
 		EndIf
+		Sleep(500)
 	Next
 	If $iFailCount >= 0 Then
 		Return SetError($iFailCount, 0, False)
 	Else
 		Return True
 	EndIf
-EndFunc   ;==>_Ping
-
-Func _ContainsNetworkIP($pIP)
-	If StringInStr($pIP, $aIP[1] & "." & $aIP[2] & "." & $aIP[3]) Then
-		Return True
-	EndIf
-EndFunc   ;==>_ContainsNetworkIP
+EndFunc   ;==>_PingIP
 
 Func _Tracker($sMAC, $sStatus)
 	IniWrite($sDatabase_Path, "Tracker", $sMAC, $sStatus)
