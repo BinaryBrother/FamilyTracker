@@ -9,10 +9,11 @@ Global $aLocal_ARP_Table[1][2] = [["IP", "MAC"]]
 $sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
 $sPrimaryIP = _GetIPAuto()
 $aIP = StringSplit($sPrimaryIP, ".")
-$aARP_Table = _GetGlobalARPTable()
 
-AdlibRegister("_GetGlobalARPTable", 1000 * 60 * 5) ; (Default: 5 minutes) This will determine how often we look for NEW devices.
+$aARP_Table = _GetARPTable()
 
+AdlibRegister("_GetARPTable", 1000 * 60) ; (Default: 1 minutes) This will determine how often we look for NEW devices.
+AdlibRegister("_Fill_ARP_Table", 1000 * 60 * 5) ; (Default: 1 hour) This will determine how often we scan the network for devices.
 ; At this point $aARP_Table is filled with the local ARP Table.
 ; You can use this to check if a device is on the network by checking the MAC Address.
 ; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor. [LIMIT 3]
@@ -97,8 +98,7 @@ Func _Fill_ARP_Table()
 	SplashOff()
 EndFunc   ;==>_Fill_ARP_Table
 
-Func _GetGlobalARPTable()
-	_Fill_ARP_Table()
+Func _GetARPTable()
 	Local $lReturn = _GetReturn("arp -a")
 	$lReturn = StringSplit($lReturn, @CRLF, 1)
 	Return $lReturn
