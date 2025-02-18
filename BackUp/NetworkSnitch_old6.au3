@@ -4,40 +4,43 @@
 #Region Global Declarations
 Global $sDatabase_Path, $sPrimaryIP, $aIP, $aARP_Table
 Global $aLocal_ARP_Table[1][2] = [["IP", "MAC"]]
-#EndRegion Global Declarations
+#EndRegion
 
 $sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
 $sPrimaryIP = _GetIPAuto()
 $aIP = StringSplit($sPrimaryIP, ".")
 $aARP_Table = _GetGlobalARPTable()
 
-AdlibRegister("_GetGlobalARPTable", 1000 * 60 * 5) ; (Default: 5 minutes) This will determine how often we look for NEW devices.
+;_CreateLocalARPTableDatabase()
 
-; At this point $aARP_Table is filled with the local ARP Table.
+#Region Maintain Globals
+AdlibRegister("_GetGlobalARPTable", 1000*60*5) ; (Default: 5 minutes) This will determine how often we look for NEW devices.
+;AdlibRegister("_CreateLocalARPTableDatabase", 1000*60*5)
+#EndRegion
+
+; At this point $aLocal_ARP_Table is filled with the local ARP Table.
 ; You can use this to check if a device is on the network by checking the MAC Address.
-; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor. [LIMIT 3]
+; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor.
 ; [Monitor]
 ; be-b8-d0-71-15-fa=Jimmy's - Pixel 6
 ; e2-c5-d3-fb-0a-fd=Nola's - Pixel 6
 
 $aData = IniReadSection($sDatabase_Path, "Monitor")
-
+;_ArrayDisplay($aData)
 While 1
 	For $N = 1 To $aData[0][0]
 		;$aData[$N][0] = MAC Address
-		;$aData[$N][1] = Device Name
 		$lReturn = _PingMAC($aData[$N][0])
-		If @error Or $lReturn = False Then
-			ConsoleWrite("WARNING: Unable to communicate with " & $aData[$N][1] & @CRLF)
+		If @error or $lReturn = False Then 
+			ConsoleWrite("WARNING: Unable to communicate with " & $aData[$N][0] & @CRLF)
 			_Tracker($aData[$N][0], "DOWN")
 			;MsgBox($MB_OK, "Network Snitch", $aData[$N][1] & " left the network!")
 		Else
 			_Tracker($aData[$N][0], "UP")
-		EndIf
+		endif
 		Sleep(500)
 	Next
 WEnd
-#cs
 Func _CreateLocalARPTableDatabase()
 	For $N = 1 To $aARP_Table[0]
 		If _ContainsNetworkIP($aARP_Table[$N]) Then
@@ -48,8 +51,7 @@ Func _CreateLocalARPTableDatabase()
 			EndIf
 		EndIf
 	Next
-EndFunc   ;==>_CreateLocalARPTableDatabase
-#ce
+EndFunc
 
 Func _GetReturn($sCommand)
 	Local $lReturn = Run(@ComSpec & " /c " & $sCommand, "", @SW_HIDE, $STDERR_CHILD + $STDOUT_CHILD)
@@ -80,7 +82,7 @@ Func _GetIPAuto()
 	Local $lReturn = _GetReturn("tracert -d -h 1 -4 8.8.8.8")
 	Local $aIPs = StringRegExp($lReturn, "(\d+\.\d+\.\d+\.\d+)", 3)
 	Return $aIPs[1]
-EndFunc   ;==>_GetIPAuto
+EndFunc
 
 Func _Fill_ARP_Table()
 	Local $lIP
@@ -102,9 +104,9 @@ Func _GetGlobalARPTable()
 	Local $lReturn = _GetReturn("arp -a")
 	$lReturn = StringSplit($lReturn, @CRLF, 1)
 	Return $lReturn
-EndFunc   ;==>_GetGlobalARPTable
+EndFunc   ;==>_GetARPTable
 
-Func _PingIP($pIP)
+Func _Ping($pIP)
 	Local $iFailCount = 0
 	Local $lReturn
 	For $N = 1 To 4
@@ -123,7 +125,7 @@ Func _PingIP($pIP)
 EndFunc   ;==>_Ping
 
 Func _ContainsNetworkIP($pIP)
-	If StringInStr($pIP, $aIP[1] & "." & $aIP[2] & "." & $aIP[3]) Then
+	If StringInStr($pIP, $aIP[1] & "." & $aIP[2] & "." & $aIP[3] ) Then
 		Return True
 	EndIf
 EndFunc   ;==>_ContainsNetworkIP
@@ -139,12 +141,12 @@ Func _PingMAC($sMAC)
 	For $N = 1 To $aMonitor[0][0]
 		If StringInStr($aMonitor[$N][1], $sMAC) Then
 			ConsoleWrite("_PingMAC(): Found IP in DB " & $aMonitor[$N][0] & @CRLF)
-			$lReturn = _PingIP($aMonitor[$N][0])
+			$lReturn = _Ping($aMonitor[$N][0])
 			If Not @error Then
-				ConsoleWrite("_PingMAC(): " & $aMonitor[$N][0] & " is UP!" & @CRLF)
+				ConsoleWrite("_PingMAC(): " & $aMonitor[$N][1] & " is UP!" & @CRLF)
 				Return True
 			Else
-				ConsoleWrite("_PingMAC(): " & $aMonitor[$N][0] & " is DOWN!" & @CRLF)
+				ConsoleWrite("_PingMAC(): " & $aMonitor[$N][1] & " is DOWN!" & @CRLF)
 				Return False
 			EndIf
 		EndIf
