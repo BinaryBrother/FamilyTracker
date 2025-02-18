@@ -1,24 +1,24 @@
-#include <MsgBoxConstants.au3>
 #include <Array.au3>
 
-Global $sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
+Global $sDatabase_Path = @ScriptDir & "\NetworkMonitor.ini"
 Global $sIP = _GetGatewayIP()
 Global $aIP = StringSplit($sIP, ".")
-Global $aARP_Table = _Get_ARP_Table()
+Global $aARP_Table
 Global $bFill_ARP_Table_FirstRun = True
 Global $bGet_ARP_Table_FirstRun = True
 
 $aARP_Table = _Get_ARP_Table()
 
-_ArrayDisplay($aARP_Table)
+Func _Get_ARP_Table()
+	If $bGet_ARP_Table_FirstRun Then _Fill_ARP_Table()
 
-AdlibRegister("_Fill_ARP_Table", 1000 * 60 * 5) ; (Default: 5 minutes) This will determine how often we scan the network for NEW devices.
-; At this point $aARP_Table is filled with the local ARP Table.
-; You can use this to check if a device is on the network by checking the MAC Address.
-; The NetworkSnitch.ini file has to be modified to include the MAC Address of the device you want to monitor. [LIMIT 3]
-; [Monitor]
-; be-b8-d0-71-15-fa=Jimmy's - Pixel 6
-; e2-c5-d3-fb-0a-fd=Nola's - Pixel 6
+	Local $lReturn = _GetReturn("arp -a")
+	$lReturn = StringSplit($lReturn, @CRLF, 1)
+	$bGet_ARP_Table_FirstRun = False
+	Return $lReturn
+EndFunc   ;==>_Get_ARP_Table
+
+_ArrayDisplay($aARP_Table)
 
 $aData = IniReadSection($sDatabase_Path, "Monitor")
 
@@ -86,14 +86,7 @@ Func _Fill_ARP_Table()
 	$bFill_ARP_Table_FirstRun = False
 EndFunc   ;==>_Fill_ARP_Table
 
-Func _Get_ARP_Table()
-	If $bGet_ARP_Table_FirstRun Then _Fill_ARP_Table()
 
-	Local $lReturn = _GetReturn("arp -a")
-	$lReturn = StringSplit($lReturn, @CRLF, 1)
-	$bGet_ARP_Table_FirstRun = False
-	Return $lReturn
-EndFunc   ;==>_GetARPTable
 
 Func _PingIP($pIP)
 	Local $iFailCount = 0
