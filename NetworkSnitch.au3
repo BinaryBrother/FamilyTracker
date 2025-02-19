@@ -17,7 +17,7 @@ While 1
 		$lReturn = _isAliveMAC($aData[$N][0])
 		If $lReturn = False Then
 			ConsoleWrite("WARNING: Unable to communicate with " & $aData[$N][1] & @CRLF)
-			TrayTip("Network Snitch", "WARNING: Unable to communicate with " & $aData[$N][1], 5, 1)
+			;TrayTip("Network Snitch", "WARNING: Unable to communicate with " & $aData[$N][1], 5, 1)
 			_Tracker($aData[$N][0], "DOWN")
 		Else
 			;TrayTip("Network Snitch", "SUCCESS: Able to communicate with " & $aData[$N][1], 5, 1)
@@ -88,7 +88,7 @@ Func _isAliveIP($pIP)
 		Else
 			$iFailCount += 1
 		EndIf
-		Sleep(500)
+		Sleep(50)
 	Next
 	If $iFailCount >= 4 Then
 		Return SetError(1, 0, False)
