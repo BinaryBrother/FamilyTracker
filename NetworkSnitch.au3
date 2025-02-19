@@ -17,8 +17,10 @@ While 1
 		$lReturn = _isAliveMAC($aData[$N][0])
 		If $lReturn = False Then
 			ConsoleWrite("WARNING: Unable to communicate with " & $aData[$N][1] & @CRLF)
+			TrayTip("Network Snitch", "WARNING: Unable to communicate with " & $aData[$N][1], 5, 1)
 			_Tracker($aData[$N][0], "DOWN")
 		Else
+			;TrayTip("Network Snitch", "SUCCESS: Able to communicate with " & $aData[$N][1], 5, 1)
 			_Tracker($aData[$N][0], "UP")
 		EndIf
 		Sleep(500)
