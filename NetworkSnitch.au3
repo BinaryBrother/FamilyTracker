@@ -32,7 +32,6 @@ Func _Get_ARP_Table()
 	$bGet_ARP_Table_FirstRun = False
 	Local $lReturn = _GetReturn("arp -a")
 	$lReturn = StringSplit($lReturn, @CRLF, 1)
-	$bGet_ARP_Table_FirstRun = False
 	Return $lReturn
 EndFunc   ;==>_Get_ARP_Table
 
