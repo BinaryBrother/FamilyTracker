@@ -1,4 +1,6 @@
 #include <Array.au3>
+#include <AutoItConstants.au3>
+#include <TrayConstants.au3>
 
 Global $sDatabase_Path = @ScriptDir & "\DB.ini"
 Global $bFill_ARP_Table_FirstRun = True
@@ -8,6 +10,7 @@ Global $aIP = StringSplit($sIP, ".")
 Global $aARP_Table = _Get_ARP_Table()
 
 AdlibRegister("_Fill_ARP_Table", 1000*60*5)
+
 $aData = IniReadSection($sDatabase_Path, "Monitor")
 
 While 1
@@ -16,11 +19,12 @@ While 1
 		;$aData[$N][1] = User
 		$lReturn = _isAliveMAC($aData[$N][0])
 		If $lReturn = False Then
+			;$aData = IniReadSection($sDatabase_Path, "Tracker")
 			ConsoleWrite("WARNING: Unable to communicate with " & $aData[$N][1] & @CRLF)
-			;TrayTip("Network Snitch", "WARNING: Unable to communicate with " & $aData[$N][1], 5, 1)
+			;TrayTip("Family Tracker", $aData[$N][1] & " has left the network!", 5, $TIP_ICONEXCLAMATION)
 			_Tracker($aData[$N][0], "DOWN")
 		Else
-			;TrayTip("Network Snitch", "SUCCESS: Able to communicate with " & $aData[$N][1], 5, 1)
+			;TrayTip("Family Tracker", $aData[$N][1] & " is back online!", 5, 1)
 			_Tracker($aData[$N][0], "UP")
 		EndIf
 		Sleep(500)
@@ -35,22 +39,6 @@ Func _Get_ARP_Table()
 	Return $lReturn
 EndFunc   ;==>_Get_ARP_Table
 
-
-
-Func _GetActiveIP()
-	Local $aIP_Address[5]
-	$aIP_Address[1] = @IPAddress1
-	$aIP_Address[2] = @IPAddress2
-	$aIP_Address[3] = @IPAddress3
-	$aIP_Address[4] = @IPAddress4
-	For $N = 1 To 4
-		$lReturn = MsgBox($MB_YESNO + $MB_TOPMOST + $MB_ICONQUESTION, "Network Snitch", "Is this your proper network IP?" & @CRLF & $aIP_Address[$N])
-		If $lReturn = $IDYES Then
-			Return $aIP_Address[$N]
-		EndIf
-	Next
-EndFunc   ;==>_GetActiveIP
-
 Func _GetGatewayIP()
 	Local $lReturn = _GetReturn("tracert -d -h 1 -4 8.8.8.8")
 	Local $aIPs = StringRegExp($lReturn, "(\d+\.\d+\.\d+\.\d+)", 3)
@@ -61,7 +49,7 @@ Func _Fill_ARP_Table()
 	; This function will scan the network for devices and add them to the ARP Table
 	Local $lIP
 	Local $lProgress
-	If $bFill_ARP_Table_FirstRun Then SplashTextOn("Network Snitch", "Scanning Network...", 300, 100, -1, -1, 1, "", 14)
+	If $bFill_ARP_Table_FirstRun Then SplashTextOn("Family Tracker", "Scanning Network...", 300, 100, -1, -1, $DLG_CENTERONTOP, "Verdana", 14)
 	For $N = 1 To 255
 		$lIP = $aIP[1] & "." & $aIP[2] & "." & $aIP[3] & "." & $N
 		ConsoleWrite("Pinging: " & $lIP & @CRLF)
