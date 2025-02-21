@@ -1,6 +1,6 @@
 #include <Array.au3>
 
-Global $sDatabase_Path = @ScriptDir & "\NetworkSnitch.ini"
+Global $sDatabase_Path = @ScriptDir & "\DB.ini"
 Global $bFill_ARP_Table_FirstRun = True
 Global $bGet_ARP_Table_FirstRun = True
 Global $sIP = _GetGatewayIP()
